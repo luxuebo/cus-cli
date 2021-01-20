@@ -1,5 +1,5 @@
 {
-  "name": "lxb-cli-vue",
+  "name": "cus-cli",
   "version": "1.0.0",
   "description": "vue2 cli",
   "main": "src/main.js",
@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
-    "lxb-vue": "bin/lxb-vue.js"
+    "cus-cli": "bin/cus-cli.js"
   },
   "keywords": [],
   "author": "lxb",
