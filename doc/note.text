@@ -1,0 +1,7 @@
+
+npm link 将包链接到全局
+npm unlink 解除链接
+npm link --force 强制覆盖链接
+
+npm config get prefix 查看链接到全局的包的目录
+{prefix}/lib/node_modules/<package>
