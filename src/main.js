@@ -1,21 +1,21 @@
 const path = require('path');
 const program = require('commander')
-
+const {commandStr} = require('./constants');
 // 配置指令命令
 const mapActions = {
     create: {
       alias: 'c',
       description: 'create a project',
       examples: [
-        'lxb-vue create <project-name>',
+        `${commandStr} create <project-name>`,
       ],
     },
     config: {
       alias: 'conf',
       description: 'config project variable',
       examples: [
-        'lxb-vue config set <k><v>',
-        'lxb-vue config get <k>',
+        `${commandStr} config set <k><v>`,
+        `${commandStr} config get <k>`
       ],
     },
     '*': {
@@ -36,7 +36,7 @@ Reflect.ownKeys(mapActions).forEach((action) => {
           console.log(mapActions[action].description);
         } else {
           // 截取命令
-          // lxb-vue create xxx // [node,td-cli,create,xxx]
+          // commandStr create xxx // [node,td-cli,create,xxx]
           require(path.resolve(__dirname, action))(...process.argv.slice(3));
         }
       });

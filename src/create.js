@@ -1,25 +1,20 @@
 const axios = require('axios');
+const logSymbols = require('log-symbols')
+const chalk = require('chalk')
 const ora = require('ora');
 const Inquirer = require('inquirer');
-const {
-  promisify,
-} = require('util');
+const {promisify} = require('util');
 const fs = require('fs');
 const path = require('path');
 let downloadGitRepo = require('download-git-repo');
 const MetalSmith = require('metalsmith'); // 遍历文件夹 找需不需要渲染
 // consolidate 统一了 所有的模版引擎
-let {
-  render,
-} = require('consolidate').ejs;
-
+let {render} = require('consolidate').ejs;
 render = promisify(render);
 // 可以把异步的api转换成promise
 downloadGitRepo = promisify(downloadGitRepo);
 let ncp = require('ncp');
-const {
-  downloadDirectory,
-} = require('./constants');
+const {downloadDirectory,gitOrganization,commandStr} = require('./constants');
 
 ncp = promisify(ncp);
 // create的所有逻辑
@@ -31,7 +26,7 @@ ncp = promisify(ncp);
 const fetchRepoList = async () => {
   const {
     data,
-  } = await axios.get('https://api.github.com/orgs/lxb-cli/repos');
+  } = await axios.get(`https://api.github.com/orgs/${gitOrganization}/repos`);
   return data;
 };
 // 2.抓取tag列表
@@ -39,7 +34,7 @@ const fetchTagList = async (repo) => {
   console.log(repo);
   const {
     data,
-  } = await axios.get(`https://api.github.com/repos/lxb-cli/${repo}/tags`);
+  } = await axios.get(`https://api.github.com/repos/${gitOrganization}/${repo}/tags`);
   return data;
 };
 // 3.封装loading效果
@@ -50,6 +45,7 @@ const waitFnloading = (fn, message) => async (...args) => {
   spinner.succeed();
   return result;
 };
+//下载模板到临时目录
 const download = async (repo, tag) => {
   let api = `lxb-cli/${repo}`;
   if (tag) {
@@ -57,13 +53,28 @@ const download = async (repo, tag) => {
   }
   const dest = `${downloadDirectory}/${repo}`;
   await downloadGitRepo(api, dest);
-  return dest;
+  return dest;//返回临时目录路径
+};
+//4.删除目录下的文件夹及文件
+const deleteDir = async (path) =>{
+	let files = [];
+	if(fs.existsSync(path)) {
+		files = fs.readdirSync(path);
+		files.forEach(function(file, index) {
+			var curPath = path + "/" + file;
+			if(fs.statSync(curPath).isDirectory()) {
+				deleteDir(curPath);
+			} else { 
+				fs.unlinkSync(curPath);
+			}
+		});
+		fs.rmdirSync(path);
+	}
 };
 module.exports = async (projectName) => {
   // 1. 获取项目的模版
-  let repos = await waitFnloading(fetchRepoList, 'fetching template ....')();
+  let repos = await waitFnloading(fetchRepoList, 'fetching template from github....')();
   repos = repos.map((item) => item.name);
-  // console.log(repos);
   // 在获取之前 显示loading 关闭loading
   // 选择模版 inquirer
   const {
@@ -71,12 +82,13 @@ module.exports = async (projectName) => {
   } = await Inquirer.prompt({
     name: 'repo', // 获取选择后的结果
     type: 'list', // 什么方式显示在命令行
-    message: 'please choise a template to create project', // 提示信息
+    // message: 'please choise a template to create project', // 提示信息
+    message: '请选择一个项目模板创建项目', // 提示信息
     choices: repos, // 选择的数据
   });
   // 通过当前选择的项目 拉去对应的版本
   // 2. 获取对应的版本号
-  let tags = await waitFnloading(fetchTagList, 'fetching tags ......')(repo);
+  let tags = await waitFnloading(fetchTagList, 'fetching tags from github......')(repo);
   tags = tags.map((item) => item.name);
   // 选择版本号
   const {
@@ -84,23 +96,27 @@ module.exports = async (projectName) => {
   } = await Inquirer.prompt({
     name: 'tag', // 获取选择后的结果
     type: 'list', // 什么方式显示在命令行
-    message: 'please choise tags to create project', // 提示信息
+    // message: 'please choise tags to create project', // 提示信息
+    message: '请选择一个版本创建项目', // 提示信息
     choices: tags, // 选择的数据
   });
   // 下载模版
-  // console.log(repo, tag);
   // 3. 把模版放到一个临时目录里存好,以备后期使用
   // download-git-repo
-  const result = await waitFnloading(download, 'download template')(repo, tag);
-  console.log(result); // 下载目录
+  const result = await waitFnloading(download, 'download template.......')(repo, tag);//下载目录
   // 我拿到了下载目录 直接拷贝当前执行的目录下即可 ncp
-
-  // 把template 下的文件 拷贝到执行命令的目录下
+  // 把.{commandStr}-template 下的文件 拷贝到执行命令的目录下
   // 4. 拷贝操作
   // 这个目录 项目名字是否已经存在 如果存在提示当前已经存在
-  // 如果有ask.js 文件 .template/xxx
+  // 如果有ask.js 文件 .{commandStr}-template/xxx
   if (!fs.existsSync(path.join(result, 'ask.js'))) {
     await ncp(result, path.resolve(projectName));
+    await deleteDir(result)//删除临时模板
+    console.log(logSymbols.success,`项目:${chalk.magenta(projectName)} 创建成功`)
+    console.log('  按照下面的命令方式开始吧')
+    console.log(chalk.cyan(`  cd ${projectName}`))
+    console.log(chalk.cyan(`  npm install`))
+    console.log(chalk.cyan(`  npm run dev`))
   } else {
     // 复杂的需要模版渲染 渲染后在拷贝
     // 把git上的项目下载下来 如果有ask 文件就是一个复杂的模版,
