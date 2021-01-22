@@ -17,7 +17,7 @@ let ncp = require('ncp');
 const { 
   downloadDirectory, 
   gitOrganization, 
-  commandStr,
+  commandStr,//脚手架命令
   askjs 
 } = require('./constants');
 ncp = promisify(ncp);
@@ -25,13 +25,12 @@ ncp = promisify(ncp);
 //选择从何处拉取模板 github组织中或者脚手架中
 // 从githun中拉取模板
 //     拉取你自己的所有项目列出 让用户选 安装哪个项目 projectName
-//     选完后 在显示所有的版本号 1.0
-//     可能还需要用户配置一些数据 来结合渲染我的项目
+//     选完后 在显示所有的版本号 1.0.0
+//     可能还需要用户配置一些数据 来结合渲染项目，比如填写package.json中的内容
 //     https://api.github.com/orgs/lxb-cli/repos 获取组织下的仓库
 //从脚手架中拉取模板
 //   选择模板
-//   选完后 在显示所有的版本号 1.0
-//   可能还需要用户配置一些数据 来结合渲染我的项目
+//   可能还需要用户配置一些数据 来结合渲染项目，比如填写package.json中的内容
 // 1.获取项目列表
 const fetchRepoList = async () => {
   const {
@@ -41,7 +40,6 @@ const fetchRepoList = async () => {
 };
 // 2.抓取tag列表
 const fetchTagList = async (repo) => {
-  console.log(repo);
   const {
     data,
   } = await axios.get(`https://api.github.com/repos/${gitOrganization}/${repo}/tags`);
@@ -73,23 +71,7 @@ function consoleInfo(projectName) {
   console.log(chalk.cyan(`  npm install`))
   console.log(chalk.cyan(`  npm run dev`))
 }
-//6.删除目录下的文件夹及文件
-const deleteDir = async (path) => {
-  let files = [];
-  if (fs.existsSync(path)) {
-    files = fs.readdirSync(path);
-    files.forEach(function (file, index) {
-      var curPath = path + "/" + file;
-      if (fs.statSync(curPath).isDirectory()) {
-        deleteDir(curPath);
-      } else {
-        fs.unlinkSync(curPath);
-      }
-    });
-    fs.rmdirSync(path);
-  }
-};
-//7.获取当前文件夹中的子文件夹名称
+//6.获取当前文件夹中的子文件夹名称
 let getFileDirectoryList = async (path) => {
   let directoryList = []//子文件列表
   const fileList = fs.readdirSync(path)
@@ -101,7 +83,7 @@ let getFileDirectoryList = async (path) => {
   })
   return directoryList
 }
-//8.判断当前目录是否已存在和新创建的文件夹重名,是否继续
+//7.判断当前目录是否已存在和新创建的文件夹重名,是否继续
 let isNextDo = async (projectName, copyTemplate,callback) => {
   //当前文件夹中的文件夹列表
   let currentDirectoryList = await getFileDirectoryList(process.cwd())
@@ -125,17 +107,14 @@ let isNextDo = async (projectName, copyTemplate,callback) => {
     callback(copyTemplate,projectName)
   }
 }
-//9.拷贝操作
-let copyTemplate = async (result,projectName, isgit) => {
+//8.拷贝操作
+let copyTemplate = async (result,projectName) => {
   if (!fs.existsSync(path.join(result, askjs))) {
     await ncp(result, path.resolve(projectName));
-    if (isgit) {
-      await deleteDir(result)//删除临时模板
-    }
     consoleInfo(projectName)
   } else {
     // 复杂的需要模版渲染 渲染后在拷贝
-    // 把git上的项目下载下来 如果有ask.js 文件就是一个复杂的模版,
+    // 把git上的项目下载下来 如果有askjs 文件就是一个复杂的模版,
     // 我们需要用户选择, 选择后编译模版
     // 1.让用户填信息
     await new Promise((resolve, reject) => {
@@ -205,7 +184,7 @@ module.exports = async (projectName) => {
     });
     // 这个目录 项目名字是否已经存在 如果存在提示当前已经存在,是否继续，在回调函数中继续
     isNextDo(projectName, copyTemplate,async (copyTemplate1)=>{
-      copyTemplate1(`${result}/${repo}`,projectName, false)
+      copyTemplate1(`${result}/${repo}`,projectName)
     })
   } else {
     //2.从github拉取模板
@@ -238,12 +217,12 @@ module.exports = async (projectName) => {
     // 2.2 把模版放到一个临时目录里存好,以备后期使用
     // download-git-repo
     const result = await waitFnloading(download, '下载模板.......')(repo, tag);//下载目录
-    // 我拿到了下载目录 直接拷贝当前执行的目录下即可 ncp
+    // 拿到了下载目录 直接拷贝当前执行的目录下即可 ncp
     // 把.{commandStr}-template 下的文件 拷贝到执行命令的目录下
     // 2.3 拷贝操作
     // 这个目录 项目名字是否已经存在 如果存在提示当前已经存在,是否继续，在回调函数中继续
     isNextDo(projectName, copyTemplate,async (copyTemplate1)=>{
-      copyTemplate1(result,projectName, true)
+      copyTemplate1(result,projectName)
     })
   }
 };
