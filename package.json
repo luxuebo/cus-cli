@@ -1,7 +1,7 @@
 {
-  "name": "cus-cli",
+  "name": "lxb-cus-cli",
   "version": "1.0.0",
-  "description": "vue2 cli",
+  "description": "cli",
   "main": "src/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
