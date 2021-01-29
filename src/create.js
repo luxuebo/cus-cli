@@ -66,7 +66,7 @@ const download = async (repo, tag) => {
 //5.下载模板成功后控制台打印提示信息
 function consoleInfo(projectName) {
   console.log(logSymbols.success, `项目:${chalk.magenta(projectName)} 创建成功`)
-  console.log('  按照下面的命令方式开始吧')
+  console.log(`  let's go !!!`)
   console.log(chalk.cyan(`  cd ${projectName}`))
   console.log(chalk.cyan(`  npm install`))
   console.log(chalk.cyan(`  npm run dev`))
